@@ -24,11 +24,11 @@
   tasks:
     - name: Normalise the instance URL (strip trailing slashes)
       ansible.builtin.set_fact:
-        openflake_instance_url: "{{ openflake_instance_url | regex_replace('/*$', '') }}"
+        openflake_url: "{{ openflake_instance_url | regex_replace('/*$', '') }}"
 
     - name: Look up ticket sys_id by number
       ansible.builtin.uri:
-        url: "{{ openflake_instance_url }}/api/flake/table/incident?sysparm_query=number={{ ticket_id }}&sysparm_limit=1"
+        url: "{{ openflake_url }}/api/flake/table/incident?sysparm_query=number={{ ticket_id }}&sysparm_limit=1"
         method: GET
         user: "{{ openflake_username }}"
         password: "{{ openflake_password }}"
@@ -131,7 +131,7 @@
 
     - name: Update ticket
       ansible.builtin.uri:
-        url: "{{ openflake_instance_url }}/api/flake/table/incident/{{ openflake_sys_id }}"
+        url: "{{ openflake_url }}/api/flake/table/incident/{{ openflake_sys_id }}"
         method: PATCH
         user: "{{ openflake_username }}"
         password: "{{ openflake_password }}"
@@ -150,4 +150,4 @@
         msg: |
           OpenFlake ticket {{ ticket_id }} updated.
           State: {{ openflake_update.json.result.state }}
-          URL: {{ openflake_instance_url }}/incidents/{{ openflake_sys_id }}
+          URL: {{ openflake_url }}/incidents/{{ openflake_sys_id }}
