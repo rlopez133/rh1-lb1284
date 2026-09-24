@@ -1,0 +1,86 @@
+---
+openflake_state: present
+openflake_namespace: openflake
+openflake_release_name: openflake
+openflake_create_namespace: true
+
+# Path to the chart. Defaults to the copy shipped in this repository, resolved
+# relative to the role so it works from any working directory, including the
+# project checkout Automation Platform creates.
+openflake_chart_path: "{{ (role_path ~ '/../../helm/openflake') | ansible.builtin.realpath }}"
+
+openflake_image_registry: quay.io/rlopez133/openflake
+# `stable` is the tag student environments deploy: it moves only when a build
+# has been verified. Iterate against `ocp-test` instead -- pushing to it cannot
+# then reach a class that is already running.
+openflake_image_tag: stable
+# Both tags are mutable, so IfNotPresent -- the chart's default -- makes nodes
+# reuse a stale cached layer after a rebuild. Pull every time.
+openflake_image_pull_policy: Always
+# Image pull secrets already present in the namespace, in the chart's own
+# form: [{name: quay-pull}].
+openflake_image_pull_secrets: []
+
+# Route hostname. Leave empty to let OpenShift generate one -- the role then
+# reads the generated hostname back and reconciles BASE_URL/CORS_ORIGINS with
+# a second Helm pass.
+openflake_route_host: ""
+openflake_route_enabled: true
+openflake_route_tls_enabled: true
+
+# Credentials. Leave empty and the chart generates a value on first install,
+# then preserves it across upgrades. Set them to manage credentials yourself,
+# ideally from an AAP custom credential rather than plain extra vars.
+openflake_admin_username: admin
+openflake_admin_password: ""
+openflake_secret_key: ""
+openflake_postgres_password: ""
+# Use a Secret you created out of band instead of the chart-managed one.
+openflake_existing_secret: ""
+
+# Storage.
+openflake_postgres_storage_size: 10Gi
+openflake_attachments_storage_size: 5Gi
+# StorageClass for both PVCs. Empty uses the cluster default.
+openflake_storage_class: ""
+
+# Escape hatch: an arbitrary values dict, deep-merged last so it wins over
+# everything above. Mirrors the chart's values.yaml structure.
+openflake_values: {}
+
+# Wait for workloads to become ready before reporting success.
+# openflake_wait_timeout is a Helm duration string; the namespace delete
+# timeout is in seconds, because kubernetes.core.k8s takes different units.
+openflake_wait: true
+openflake_wait_timeout: 10m
+openflake_namespace_delete_timeout: 600
+# Run post-install checks that the workloads actually became available.
+openflake_verify: true
+openflake_verify_retries: 30
+openflake_verify_delay: 10
+# Additionally call <route>/health/ready over the network. Off by default
+# because execution nodes often cannot reach the cluster's apps domain.
+openflake_verify_public_url: false
+openflake_verify_public_url_certs: true
+
+# Path to the helm binary. Empty means "find it on PATH".
+openflake_helm_binary: ""
+# When helm is not on PATH, download the official release instead of requiring
+# a custom execution environment. Needs egress to get.helm.sh from wherever the
+# playbook runs. Set to false to insist that helm is already provided.
+openflake_helm_install_if_missing: true
+openflake_helm_version: v3.16.3
+openflake_helm_install_dir: /tmp/openflake-helm
+
+# Uninstall behaviour. `state: absent` is a full teardown by default: it takes
+# the volumes and the namespace with it, leaving nothing behind.
+#
+# `helm uninstall` on its own does not do this -- the attachments PVC carries
+# helm.sh/resource-policy=keep and the Postgres PVC belongs to a StatefulSet's
+# volumeClaimTemplate, so both survive it. These two variables are what remove
+# them, and removing them destroys every ticket, CI, and attachment in the
+# instance. Set either to false to keep that data for a later redeploy.
+openflake_remove_pvcs: true
+# Deleting the namespace removes the PVCs regardless of openflake_remove_pvcs,
+# together with anything unrelated that happens to share the project.
+openflake_remove_namespace: true

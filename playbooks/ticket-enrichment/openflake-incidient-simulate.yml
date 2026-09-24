@@ -144,9 +144,9 @@
     sim_cpu_cores: "{{ hostvars['localhost'].sim_cpu_cores | default('unknown') }}"
     sim_cpu_total_pct: "{{ hostvars['localhost'].sim_cpu_total_pct | default('unknown') }}"
 
-    openflake_instance_url: "{{ lookup('env', 'SNOW_INSTANCE_URL') }}"
-    openflake_username: "{{ lookup('env', 'SNOW_USERNAME') | default('admin', true) }}"
-    openflake_password: "{{ lookup('env', 'SNOW_PASSWORD') }}"
+    openflake_instance_url: "{{ lookup('env', 'OPENFLAKE_INSTANCE_URL') }}"
+    openflake_username: "{{ lookup('env', 'OPENFLAKE_USERNAME') | default('admin', true) }}"
+    openflake_password: "{{ lookup('env', 'OPENFLAKE_PASSWORD') }}"
 
     ao_base_url: "{{ lookup('env', 'AO_BASE_URL')  }}"
     ao_sa_client_id: "{{ lookup('env', 'AO_CLIENT_ID') }}"
@@ -196,7 +196,7 @@
 
     - name: Look up the CI for the target host
       ansible.builtin.uri:
-        url: "{{ openflake_instance_url }}/api/now/table/cmdb_ci?sysparm_query=name={{ sim_host }}&sysparm_limit=1"
+        url: "{{ openflake_instance_url }}/api/flake/table/cmdb_ci?sysparm_query=name={{ sim_host }}&sysparm_limit=1"
         method: GET
         user: "{{ openflake_username }}"
         password: "{{ openflake_password }}"
@@ -218,7 +218,7 @@
 
     - name: Create incident tickets
       ansible.builtin.uri:
-        url: "{{ openflake_instance_url }}/api/now/table/incident"
+        url: "{{ openflake_instance_url }}/api/flake/table/incident"
         method: POST
         user: "{{ openflake_username }}"
         password: "{{ openflake_password }}"

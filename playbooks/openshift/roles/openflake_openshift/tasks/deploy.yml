@@ -1,0 +1,138 @@
+---
+- name: Assemble the base Helm values
+  ansible.builtin.set_fact:
+    _openflake_release_values:
+      image:
+        registry: "{{ openflake_image_registry }}"
+        tag: "{{ openflake_image_tag }}"
+        pullPolicy: "{{ openflake_image_pull_policy }}"
+      auth:
+        adminUsername: "{{ openflake_admin_username }}"
+      route:
+        enabled: "{{ openflake_route_enabled | bool }}"
+        tls:
+          enabled: "{{ openflake_route_tls_enabled | bool }}"
+      postgresql:
+        persistence:
+          size: "{{ openflake_postgres_storage_size }}"
+      backend:
+        attachments:
+          persistence:
+            size: "{{ openflake_attachments_storage_size }}"
+
+- name: Layer in the optional settings that were supplied
+  ansible.builtin.set_fact:
+    _openflake_release_values: >-
+      {{
+        _openflake_release_values
+        | combine({'route': {'host': openflake_route_host}}
+                  if openflake_route_host else {}, recursive=True)
+        | combine({'image': {'pullSecrets': openflake_image_pull_secrets}}
+                  if openflake_image_pull_secrets else {}, recursive=True)
+        | combine({'postgresql': {'persistence': {'storageClass': openflake_storage_class}},
+                   'backend': {'attachments': {'persistence': {'storageClass': openflake_storage_class}}}}
+                  if openflake_storage_class else {}, recursive=True)
+      }}
+
+# Credentials are merged in their own task so the whole values dict can be
+# hidden from the job output without also hiding the settings above.
+- name: Merge explicitly supplied credentials
+  ansible.builtin.set_fact:
+    _openflake_release_values: >-
+      {{
+        _openflake_release_values
+        | combine({'auth': {'adminPassword': openflake_admin_password}}
+                  if openflake_admin_password else {}, recursive=True)
+        | combine({'auth': {'secretKey': openflake_secret_key}}
+                  if openflake_secret_key else {}, recursive=True)
+        | combine({'auth': {'existingSecret': openflake_existing_secret}}
+                  if openflake_existing_secret else {}, recursive=True)
+        | combine({'postgresql': {'password': openflake_postgres_password}}
+                  if openflake_postgres_password else {}, recursive=True)
+        | combine(openflake_values, recursive=True)
+      }}
+  no_log: true
+
+- name: Install or upgrade the OpenFlake release
+  kubernetes.core.helm:
+    name: "{{ openflake_release_name }}"
+    namespace: "{{ openflake_namespace }}"
+    chart_ref: "{{ openflake_chart_path }}"
+    create_namespace: "{{ openflake_create_namespace | bool }}"
+    release_values: "{{ _openflake_release_values }}"
+    binary_path: "{{ openflake_helm_binary | default(omit, true) }}"
+    wait: "{{ openflake_wait | bool }}"
+    wait_timeout: "{{ openflake_wait_timeout }}"
+    state: present
+  register: _openflake_install
+
+# When no hostname was supplied, OpenShift picked one. The backend was
+# installed pointing BASE_URL/CORS_ORIGINS at the in-cluster Service, so read
+# the real hostname back and run a second pass. Helm is idempotent, so on
+# later runs this converges to a no-op rather than churning the deployment.
+- name: Look up the Route created for this release
+  kubernetes.core.k8s_info:
+    api_version: route.openshift.io/v1
+    kind: Route
+    namespace: "{{ openflake_namespace }}"
+    label_selectors:
+      - "app.kubernetes.io/instance={{ openflake_release_name }}"
+      - "app.kubernetes.io/part-of=openflake"
+  register: _openflake_route_info
+  when:
+    - openflake_route_enabled | bool
+    - not openflake_route_host
+
+- name: Record the hostname OpenShift generated
+  ansible.builtin.set_fact:
+    _openflake_generated_host: >-
+      {{ (_openflake_route_info.resources | default([]) | first | default({})).spec.host | default('') }}
+  when:
+    - openflake_route_enabled | bool
+    - not openflake_route_host
+
+- name: Reconcile BASE_URL and CORS_ORIGINS with the generated hostname
+  kubernetes.core.helm:
+    name: "{{ openflake_release_name }}"
+    namespace: "{{ openflake_namespace }}"
+    chart_ref: "{{ openflake_chart_path }}"
+    release_values: >-
+      {{ _openflake_release_values
+         | combine({'route': {'host': _openflake_generated_host}}, recursive=True) }}
+    binary_path: "{{ openflake_helm_binary | default(omit, true) }}"
+    wait: "{{ openflake_wait | bool }}"
+    wait_timeout: "{{ openflake_wait_timeout }}"
+    state: present
+  register: _openflake_reconcile
+  when: _openflake_generated_host | default('') | length > 0
+
+- name: Record the public URL
+  ansible.builtin.set_fact:
+    openflake_public_url: >-
+      {{ (openflake_route_tls_enabled | bool) | ternary('https://', 'http://')
+         ~ (openflake_route_host or _openflake_generated_host | default('')) }}
+  when: openflake_route_enabled | bool
+
+- name: Verify the deployment
+  ansible.builtin.include_tasks: verify.yml
+  when: openflake_verify | bool
+
+- name: Summarize the install
+  ansible.builtin.debug:
+    msg: >-
+      OpenFlake is deployed to namespace '{{ openflake_namespace }}' as release
+      '{{ openflake_release_name }}'.
+      {% if openflake_route_enabled | bool %}URL: {{ openflake_public_url }}.{% endif %}
+      Retrieve the admin password with:
+      oc get secret {{ openflake_release_name }} -n {{ openflake_namespace }}
+      -o jsonpath='{.data.ADMIN_PASSWORD}' | base64 -d
+
+# Surfaces the URL to later steps of an Automation Platform workflow.
+- name: Publish the URL as a workflow artifact
+  ansible.builtin.set_stats:
+    data:
+      openflake_public_url: "{{ openflake_public_url }}"
+      openflake_namespace: "{{ openflake_namespace }}"
+      openflake_release_name: "{{ openflake_release_name }}"
+    aggregate: false
+  when: openflake_route_enabled | bool

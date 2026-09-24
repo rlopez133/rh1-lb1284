@@ -1,0 +1,9 @@
+---
+# Resolved helm binary. `default(..., true)` treats an empty string as unset,
+# so an empty openflake_helm_binary falls back to PATH lookup.
+_openflake_helm_bin: "{{ openflake_helm_binary | default('helm', true) }}"
+
+# Release artifact fetched when helm is missing. _openflake_helm_arch is set
+# from `uname -m` in preflight.yml, so these only resolve inside that block.
+_openflake_helm_tarball: "helm-{{ openflake_helm_version }}-linux-{{ _openflake_helm_arch | default('') }}.tar.gz"
+_openflake_helm_url: "https://get.helm.sh/{{ _openflake_helm_tarball }}"

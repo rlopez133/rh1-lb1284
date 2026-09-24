@@ -1,0 +1,24 @@
+---
+- name: Validate requested state
+  ansible.builtin.assert:
+    that:
+      - openflake_state in ['present', 'absent']
+    fail_msg: "openflake_state must be 'present' or 'absent', got '{{ openflake_state }}'"
+    quiet: true
+
+- name: Run preflight checks
+  ansible.builtin.include_tasks: preflight.yml
+  tags:
+    - openflake_preflight
+
+- name: Install or upgrade OpenFlake
+  ansible.builtin.include_tasks: deploy.yml
+  when: openflake_state == 'present'
+  tags:
+    - openflake_deploy
+
+- name: Uninstall OpenFlake
+  ansible.builtin.include_tasks: uninstall.yml
+  when: openflake_state == 'absent'
+  tags:
+    - openflake_uninstall
