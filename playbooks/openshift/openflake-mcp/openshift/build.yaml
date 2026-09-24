@@ -31,6 +31,7 @@ spec:
     git:
       uri: GIT_URI
       ref: GIT_REF
+    contextDir: playbooks/openshift/openflake-mcp
   strategy:
     type: Docker
     dockerStrategy:

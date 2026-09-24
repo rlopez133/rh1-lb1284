@@ -10,7 +10,7 @@
     # openflake_instance_url:  https://your.openflake.example.com/   (trailing slash)
     # openflake_username:      service account user
     # openflake_password:      service account password
-    openflake_git_uri: https://github.com/rlopez133/openflake-mcp.git
+    openflake_git_uri: https://github.com/rlopez133/rh1-lb1284.git
 
     # --- Optional. ------------------------------------------------------
     openflake_namespace: openflake-mcp
