@@ -194,6 +194,10 @@
       ansible.builtin.debug:
         msg: "Running scenarios: {{ active_scenarios | join(', ') }}"
 
+    - name: Normalise the instance URL (strip trailing slashes)
+      ansible.builtin.set_fact:
+        openflake_instance_url: "{{ openflake_instance_url | regex_replace('/*$', '') }}"
+
     - name: Look up the CI for the target host
       ansible.builtin.uri:
         url: "{{ openflake_instance_url }}/api/flake/table/cmdb_ci?sysparm_query=name={{ sim_host }}&sysparm_limit=1"

@@ -2,7 +2,7 @@
 # Update an OpenFlake incident from automation.
 #
 # OpenFlake implements a ServiceNow-compatible subset of the Table API
-# (/api/flake/* is rewritten to /api/flake/*), but it is NOT ServiceNow:
+# (/api/now/* is rewritten to /api/flake/*), but it is NOT ServiceNow:
 #
 # Required vars: openflake_instance_url, openflake_username, openflake_password, ticket_id
 - name: Incidents | Update OpenFlake Ticket
@@ -22,6 +22,10 @@
     remediation_close: ""
 
   tasks:
+    - name: Normalise the instance URL (strip trailing slashes)
+      ansible.builtin.set_fact:
+        openflake_instance_url: "{{ openflake_instance_url | regex_replace('/*$', '') }}"
+
     - name: Look up ticket sys_id by number
       ansible.builtin.uri:
         url: "{{ openflake_instance_url }}/api/flake/table/incident?sysparm_query=number={{ ticket_id }}&sysparm_limit=1"
