@@ -1,0 +1,14 @@
+---
+# Install or upgrade OpenFlake on OpenShift.
+#
+# Automation Platform:
+#   Attach an "OpenShift or Kubernetes API Bearer Token" credential to the job
+#   template. The role validates the connection before proceeding.
+- name: Deploy OpenFlake to OpenShift
+  hosts: localhost
+  gather_facts: false
+
+  roles:
+    - role: openflake_openshift
+      vars:
+        openflake_state: present
