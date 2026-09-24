@@ -1,0 +1,7 @@
+---
+# AAP installs these automatically when it syncs the project.
+collections:
+  - name: kubernetes.core
+    version: ">=3.0.0"
+  - name: community.okd
+    version: ">=6.0.0"
