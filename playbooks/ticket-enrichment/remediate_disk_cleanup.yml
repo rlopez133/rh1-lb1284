@@ -28,7 +28,7 @@
       ignore_errors: true
       when: incident_type != 'capacity_issue'
 
-   - name: Find large files in /var/log (> threshold MB)
+    - name: Find large files in /var/log (> threshold MB)
       ansible.builtin.find:
         paths: /var/log
         size: "{{ large_file_threshold_mb | default(100) }}m"
