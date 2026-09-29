@@ -13,7 +13,7 @@ Everything that needs to be in place before the end-to-end flow works.
 
 ### Custom Credential Types
 
-- [ ] **AO Token** — injects `AO_CLIENT_ID` and `AO_CLIENT_SECRET` as env vars
+- [ ] **AO Token** — injects `AO_CLIENT_ID`, `AO_CLIENT_SECRET` and `AO_BASE_URL` as env vars
 - [ ] **OpenFlake** — injects `openflake_instance_url`, `openflake_username`, `openflake_password` as extra_vars *and* `OPENFLAKE_INSTANCE_URL`, `OPENFLAKE_USERNAME`, `OPENFLAKE_PASSWORD` as env vars
 
 ### Credential Assignments
